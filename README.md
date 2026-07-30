@@ -124,10 +124,29 @@ bun run format:check
 bun run start
 ```
 
-`bun run start` opens the React Cosmos page containing the generic solver
-debugger. To make coincident routes legible, the debugger applies tiny
-deterministic X/Y offsets to rendered paths. These offsets never change solver
-output geometry.
+`bun run start` opens ten React Cosmos pages, `example01` through `example10`,
+each containing the generic solver debugger. To make coincident routes
+legible, the debugger applies tiny deterministic X/Y offsets to rendered
+paths. These offsets never change solver output geometry.
+
+## Example ladder
+
+| Example | Routes | Columns | Buses | Routed nets |
+| --- | ---: | ---: | ---: | ---: |
+| 01 | 1 | 2 | 2 | 1 |
+| 02 | 2 | 4 | 4 | 2 |
+| 03 | 3 | 6 | 4 | 3 |
+| 04 | 4 | 8 | 6 | 4 |
+| 05 | 6 | 12 | 8 | 5 |
+| 06 | 8 | 16 | 8 | 6 |
+| 07 | 12 | 24 | 10 | 8 |
+| 08 | 18 | 36 | 12 | 12 |
+| 09 | 28 | 56 | 16 | 16 |
+| 10 | 40 | 80 | 20 | 16 |
+
+Example 10 routes `NET` thirteen times and `VCC` thirteen times, plus fourteen
+signal nets. Its crossbar exposes four additional buses that are not requested
+by the fanout.
 
 ## Simple output
 

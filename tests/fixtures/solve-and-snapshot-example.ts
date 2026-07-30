@@ -3,6 +3,7 @@ import { getSvgFromGraphicsObject, type GraphicsObject } from "graphics-debug"
 import { CrossbarMappingSolver } from "lib/crossbar-mapping-solver"
 import type { InputProblem } from "lib/types"
 import { stackSvgsHorizontally } from "stack-svgs"
+import type { ExampleExpectations } from "./create-example-problem"
 
 const COLORS = [
   "#2563eb",
@@ -175,9 +176,11 @@ const addTitleToSvg = ({
 export const solveAndSnapshotExample = async ({
   inputProblem,
   testPath,
+  expected,
 }: {
   inputProblem: InputProblem
   testPath: string
+  expected: ExampleExpectations
 }) => {
   const inputSvg = getSvgFromGraphicsObject(
     visualizeInputProblem(inputProblem),
@@ -199,7 +202,26 @@ export const solveAndSnapshotExample = async ({
       column.vias.map((via) => via.y + via.diameter / 2),
     ),
   )
+  const busNetIds = new Set(
+    inputProblem.columns.flatMap((column) =>
+      column.vias.map(({ netId }) => netId),
+    ),
+  )
+  const routedNetIds = new Set(
+    inputProblem.fanoutPoints.map(({ netId }) => netId),
+  )
 
+  expect(inputProblem.fanoutPoints).toHaveLength(expected.routeCount)
+  expect(inputProblem.columns).toHaveLength(expected.columnCount)
+  expect(busNetIds.size).toBe(expected.busCount)
+  expect(routedNetIds.size).toBe(expected.routedNetCount)
+  for (const [netId, expectedCount] of Object.entries(
+    expected.routeNetCounts ?? {},
+  )) {
+    expect(
+      inputProblem.fanoutPoints.filter((point) => point.netId === netId),
+    ).toHaveLength(expectedCount)
+  }
   expect(
     inputProblem.fanoutPoints.every((point) => point.y === fanoutLineY),
   ).toBe(true)

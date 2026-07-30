@@ -1,10 +1,10 @@
 import { test } from "bun:test"
-import { example02 } from "tests/fixtures/example02"
+import { example08 } from "tests/fixtures/example08"
 import { solveAndSnapshotExample } from "tests/fixtures/solve-and-snapshot-example"
 
-test(example02.name, async () => {
+test(example08.name, async () => {
   await solveAndSnapshotExample({
-    ...example02,
+    ...example08,
     testPath: import.meta.path,
   })
 })
