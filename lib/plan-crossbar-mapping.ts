@@ -221,8 +221,20 @@ export const planCrossbarMapping = (
   const minViaEdgeY = Math.min(
     ...indexedVias.map(({ via }) => via.y - via.diameter / 2),
   )
+  const fanoutLineY = minViaEdgeY
+  const spreadPitch = Math.max(maxViaDiameter * 0.45, 0.2)
+  const spreadClearance = Math.max(maxViaDiameter, 0.5)
+  const firstSpreadY = fanoutLineY - spreadClearance
+  const spreadYByRoute = indexedVias.map(
+    (_, routeIndex) => firstSpreadY - routeIndex * spreadPitch,
+  )
+  const lastSpreadY = spreadYByRoute[spreadYByRoute.length - 1]!
+  const spreadZone = {
+    minY: lastSpreadY - spreadPitch / 2,
+    maxY: firstSpreadY + spreadPitch / 2,
+  }
   const busPitch = maxViaDiameter * 1.5
-  const firstBusY = minViaEdgeY - maxViaDiameter * 2
+  const firstBusY = spreadZone.minY - maxViaDiameter * 1.5
   const rightmostGap = columnGaps[columnGaps.length - 1]!
   const busPadX =
     rightmostGap.maxX + Math.max(rightmostGap.maxX - rightmostGap.minX, 1)
@@ -243,7 +255,7 @@ export const planCrossbarMapping = (
   }))
   const busPadByNetId = new Map(busPads.map((pad) => [pad.netId, pad]))
   const paths: Array<RoutedFanoutPath> = indexedVias.map(
-    ({ column, sortedColumnIndex, via, viaIndex }) => {
+    ({ column, sortedColumnIndex, via, viaIndex }, routeIndex) => {
       const netIndex = netIndexById.get(via.netId)!
       const leftGapIndex = sortedColumnIndex
       const selectedGapIndex =
@@ -254,6 +266,7 @@ export const planCrossbarMapping = (
       const track = selectedGap.tracks.find(({ netId }) => netId === via.netId)!
       const busPad = busPadByNetId.get(via.netId)!
       const start = { x: column.column.x, y: via.y }
+      const spreadY = spreadYByRoute[routeIndex]!
 
       return {
         columnIndex: column.originalColumnIndex,
@@ -261,9 +274,11 @@ export const planCrossbarMapping = (
         netId: via.netId,
         columnGapIndex: selectedGapIndex,
         turnDirection: track.x < start.x ? "left" : "right",
+        spreadY,
         points: removeConsecutiveDuplicatePoints([
           start,
-          { x: track.x, y: start.y },
+          { x: start.x, y: spreadY },
+          { x: track.x, y: spreadY },
           { x: track.x, y: busPad.y },
           { x: busPad.x, y: busPad.y },
         ]),
@@ -276,5 +291,7 @@ export const planCrossbarMapping = (
     columnGaps,
     busPads,
     paths,
+    fanoutLineY,
+    spreadZone,
   }
 }

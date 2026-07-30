@@ -8,24 +8,24 @@ const inputProblem: InputProblem = {
       x: 8,
       vias: [
         { y: 8, diameter: 1, netId: "CLK" },
-        { y: 5.5, diameter: 0.8, netId: "DATA0" },
-        { y: 3, diameter: 0.9, netId: "DATA1" },
+        { y: 7.2, diameter: 0.8, netId: "DATA0" },
+        { y: 6.4, diameter: 0.9, netId: "DATA1" },
       ],
     },
     {
       x: 0,
       vias: [
         { y: 8, diameter: 1, netId: "CLK" },
-        { y: 5.5, diameter: 0.8, netId: "DATA0" },
-        { y: 3, diameter: 0.9, netId: "DATA1" },
+        { y: 7.2, diameter: 0.8, netId: "DATA0" },
+        { y: 6.4, diameter: 0.9, netId: "DATA1" },
       ],
     },
     {
       x: 4,
       vias: [
         { y: 8, diameter: 1, netId: "CLK" },
-        { y: 5.5, diameter: 0.8, netId: "DATA0" },
-        { y: 3, diameter: 0.9, netId: "DATA1" },
+        { y: 7.2, diameter: 0.8, netId: "DATA0" },
+        { y: 6.4, diameter: 0.9, netId: "DATA1" },
       ],
     },
   ],

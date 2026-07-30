@@ -42,12 +42,18 @@ export interface BusPad extends Point2D {
   diameter: number
 }
 
+export interface SpreadZone {
+  minY: number
+  maxY: number
+}
+
 export interface RoutedFanoutPath {
   columnIndex: number
   viaIndex: number
   netId: string
   columnGapIndex: number
   turnDirection: TurnDirection
+  spreadY: number
   points: Array<Point2D>
 }
 
@@ -56,4 +62,6 @@ export interface CrossbarMappingOutput {
   columnGaps: Array<ColumnGap>
   busPads: Array<BusPad>
   paths: Array<RoutedFanoutPath>
+  fanoutLineY: number
+  spreadZone: SpreadZone
 }

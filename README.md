@@ -26,9 +26,11 @@ interface InputProblem {
 
 Columns are sorted by `x`. Nets are assigned stable indices in first-seen
 top-to-bottom order. Each column is bordered by an even and an odd channel, so
-the net index determines whether a via turns left or right. Fanout arrives
-vertically from the top, descends through its selected channel, and joins the
-generated horizontal bus row.
+the net index determines whether a via turns left or right. All fanout vias sit
+above the crossbars. A clear spread zone separates the fanout line from the
+horizontal bus rows: each trace descends into its own spread lane, moves
+horizontally to the selected column track, descends through that track, and
+then joins its generated crossbar row.
 
 ## Usage
 

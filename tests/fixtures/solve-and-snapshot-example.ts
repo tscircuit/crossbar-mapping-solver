@@ -31,9 +31,15 @@ const visualizeInputProblem = (inputProblem: InputProblem): GraphicsObject => {
   const allVias = inputProblem.columns.flatMap((column) =>
     column.vias.map((via) => ({ column, via })),
   )
-  const minY = Math.min(...allVias.map(({ via }) => via.y))
+  const fanoutLineY = Math.min(
+    ...allVias.map(({ via }) => via.y - via.diameter / 2),
+  )
+  const minY = fanoutLineY
   const maxY = Math.max(...allVias.map(({ via }) => via.y))
   const verticalMargin = Math.max(maxY - minY, 1) * 0.12
+  const minColumnX = Math.min(...inputProblem.columns.map(({ x }) => x))
+  const maxColumnX = Math.max(...inputProblem.columns.map(({ x }) => x))
+  const horizontalMargin = Math.max(maxColumnX - minColumnX, 1) * 0.12
 
   return {
     title: "Input: top-down fanout vias",
@@ -64,6 +70,16 @@ const visualizeInputProblem = (inputProblem: InputProblem): GraphicsObject => {
         strokeWidth: 0.08,
         label: `${via.netId} travels downward`,
       })),
+      {
+        points: [
+          { x: minColumnX - horizontalMargin, y: fanoutLineY },
+          { x: maxColumnX + horizontalMargin, y: fanoutLineY },
+        ],
+        strokeColor: "#475569",
+        strokeWidth: 0.07,
+        strokeDash: "0.2 0.14",
+        label: "fanout line",
+      },
     ],
     circles: allVias.map(({ column, via }) => ({
       center: { x: column.x, y: via.y },
@@ -154,6 +170,17 @@ export const solveAndSnapshotExample = async ({
   expect(output.columnGaps.map((gap) => gap.netParity)).toEqual(
     output.columnGaps.map((_, gapIndex) => getParity(gapIndex)),
   )
+  const minimumViaEdgeY = Math.min(
+    ...inputProblem.columns.flatMap((column) =>
+      column.vias.map((via) => via.y - via.diameter / 2),
+    ),
+  )
+
+  expect(output.fanoutLineY).toBe(minimumViaEdgeY)
+  expect(output.spreadZone.maxY).toBeLessThan(output.fanoutLineY)
+  expect(output.busPads.every((pad) => pad.y < output.spreadZone.minY)).toBe(
+    true,
+  )
 
   for (const path of output.paths) {
     const sourceColumn = inputProblem.columns[path.columnIndex]!
@@ -161,14 +188,19 @@ export const solveAndSnapshotExample = async ({
     const busPad = output.busPads.find((pad) => pad.netId === path.netId)!
     const netIndex = output.netOrder.indexOf(path.netId)
     const selectedGap = output.columnGaps[path.columnGapIndex]!
-    const lastPoint = path.points[path.points.length - 1]!
-    const previousPoint = path.points[path.points.length - 2]!
+    const [sourcePoint, spreadEntry, spreadExit, crossbarEntry, lastPoint] =
+      path.points
 
-    expect(path.points[0]).toEqual({ x: sourceColumn.x, y: sourceVia.y })
+    expect(path.points).toHaveLength(5)
+    expect(sourcePoint).toEqual({ x: sourceColumn.x, y: sourceVia.y })
     expect(selectedGap.netParity).toBe(getParity(netIndex))
-    expect(busPad.y).toBeLessThan(sourceVia.y)
+    expect(path.spreadY).toBeGreaterThanOrEqual(output.spreadZone.minY)
+    expect(path.spreadY).toBeLessThanOrEqual(output.spreadZone.maxY)
+    expect(spreadEntry).toEqual({ x: sourceColumn.x, y: path.spreadY })
+    expect(spreadEntry!.y).toBeLessThan(sourceVia.y)
+    expect(spreadExit!.y).toBe(path.spreadY)
+    expect(crossbarEntry).toEqual({ x: spreadExit!.x, y: busPad.y })
     expect(lastPoint).toEqual({ x: busPad.x, y: busPad.y })
-    expect(previousPoint.y).toBe(lastPoint.y)
   }
 
   const outputSvg = getSvgFromGraphicsObject(solver.visualize(), {
@@ -178,11 +210,11 @@ export const solveAndSnapshotExample = async ({
     [
       addTitleToSvg({
         svg: inputSvg,
-        title: "Input: vertical fanout from the top",
+        title: "Input: fanout line above the crossbars",
       }),
       addTitleToSvg({
         svg: outputSvg,
-        title: "Output: horizontal crossbar mapping",
+        title: "Output: spread zone then horizontal crossbars",
       }),
     ],
     {

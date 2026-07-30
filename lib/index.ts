@@ -13,5 +13,6 @@ export type {
   NetParity,
   Point2D,
   RoutedFanoutPath,
+  SpreadZone,
   TurnDirection,
 } from "./types"

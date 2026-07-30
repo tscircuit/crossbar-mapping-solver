@@ -8,7 +8,7 @@ const inputProblem: InputProblem = {
       x: 0,
       vias: [
         { y: 4, diameter: 0.8, netId: "D0" },
-        { y: 2, diameter: 0.8, netId: "D1" },
+        { y: 3.2, diameter: 0.8, netId: "D1" },
       ],
     },
   ],

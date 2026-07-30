@@ -7,19 +7,19 @@ const inputProblem: InputProblem = {
     {
       x: 0,
       vias: [
-        { y: 7, diameter: 0.8, netId: "D0" },
-        { y: 5, diameter: 0.8, netId: "D1" },
-        { y: 3, diameter: 0.8, netId: "D2" },
-        { y: 1, diameter: 0.8, netId: "D3" },
+        { y: 8, diameter: 0.8, netId: "D0" },
+        { y: 7.2, diameter: 0.8, netId: "D1" },
+        { y: 6.4, diameter: 0.8, netId: "D2" },
+        { y: 5.6, diameter: 0.8, netId: "D3" },
       ],
     },
     {
       x: 4,
       vias: [
-        { y: 7, diameter: 0.8, netId: "D0" },
-        { y: 5, diameter: 0.8, netId: "D1" },
-        { y: 3, diameter: 0.8, netId: "D2" },
-        { y: 1, diameter: 0.8, netId: "D3" },
+        { y: 8, diameter: 0.8, netId: "D0" },
+        { y: 7.2, diameter: 0.8, netId: "D1" },
+        { y: 6.4, diameter: 0.8, netId: "D2" },
+        { y: 5.6, diameter: 0.8, netId: "D3" },
       ],
     },
   ],

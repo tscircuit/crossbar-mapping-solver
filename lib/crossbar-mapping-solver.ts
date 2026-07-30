@@ -116,12 +116,19 @@ export class CrossbarMappingSolver extends BaseSolver {
     const allYCoordinates = [
       ...allVias.map(({ via }) => via.y),
       ...this.plannedOutput.busPads.map(({ y }) => y),
+      this.plannedOutput.fanoutLineY,
+      this.plannedOutput.spreadZone.minY,
+      this.plannedOutput.spreadZone.maxY,
     ]
     const minY = Math.min(...allYCoordinates)
     const maxY = Math.max(...allYCoordinates)
     const verticalMargin = Math.max(maxY - minY, 1) * 0.08
     const firstGap = this.plannedOutput.columnGaps[0]!
     const lastPad = this.plannedOutput.busPads[0]!
+    const lastGap =
+      this.plannedOutput.columnGaps[this.plannedOutput.columnGaps.length - 1]!
+    const channelMinY = minY - verticalMargin
+    const channelMaxY = this.plannedOutput.spreadZone.maxY
     const visualizedPaths = this.routedPaths.map((path) => {
       const pathIndex = this.plannedOutput.paths.findIndex(
         (candidate) =>
@@ -146,20 +153,38 @@ export class CrossbarMappingSolver extends BaseSolver {
     return {
       title: `Top-down crossbar mapping (${this.routedPaths.length}/${this.plannedOutput.paths.length} paths)`,
       coordinateSystem: "cartesian",
-      rects: this.plannedOutput.columnGaps.map((gap) => ({
-        center: {
-          x: (gap.minX + gap.maxX) / 2,
-          y: (minY + maxY) / 2,
+      rects: [
+        ...this.plannedOutput.columnGaps.map((gap) => ({
+          center: {
+            x: (gap.minX + gap.maxX) / 2,
+            y: (channelMinY + channelMaxY) / 2,
+          },
+          width: gap.maxX - gap.minX,
+          height: channelMaxY - channelMinY,
+          fill:
+            gap.netParity === "even"
+              ? "rgba(219, 234, 254, 0.22)"
+              : "rgba(243, 232, 255, 0.22)",
+          stroke: gap.netParity === "even" ? "#93c5fd" : "#d8b4fe",
+          label: `${gap.netParity} gap ${gap.columnGapIndex}`,
+        })),
+        {
+          center: {
+            x: (firstGap.minX + lastGap.maxX) / 2,
+            y:
+              (this.plannedOutput.spreadZone.minY +
+                this.plannedOutput.spreadZone.maxY) /
+              2,
+          },
+          width: lastGap.maxX - firstGap.minX,
+          height:
+            this.plannedOutput.spreadZone.maxY -
+            this.plannedOutput.spreadZone.minY,
+          fill: "rgba(254, 243, 199, 0.22)",
+          stroke: "#f59e0b",
+          label: "spread zone",
         },
-        width: gap.maxX - gap.minX,
-        height: maxY - minY + verticalMargin * 2,
-        fill:
-          gap.netParity === "even"
-            ? "rgba(219, 234, 254, 0.3)"
-            : "rgba(243, 232, 255, 0.3)",
-        stroke: gap.netParity === "even" ? "#93c5fd" : "#d8b4fe",
-        label: `${gap.netParity} gap ${gap.columnGapIndex}`,
-      })),
+      ],
       lines: [
         ...allVias.map(({ column, via }) => ({
           points: [
@@ -176,11 +201,21 @@ export class CrossbarMappingSolver extends BaseSolver {
           strokeWidth: 0.08,
           label: `${via.netId} incoming fanout traveling downward`,
         })),
+        {
+          points: [
+            { x: firstGap.minX, y: this.plannedOutput.fanoutLineY },
+            { x: lastGap.maxX, y: this.plannedOutput.fanoutLineY },
+          ],
+          strokeColor: "#475569",
+          strokeWidth: 0.07,
+          strokeDash: "0.2 0.14",
+          label: "fanout line: all fanout vias remain above this boundary",
+        },
         ...this.plannedOutput.columnGaps.flatMap((gap) =>
           gap.tracks.map((track) => ({
             points: [
-              { x: track.x, y: minY - verticalMargin },
-              { x: track.x, y: maxY + verticalMargin },
+              { x: track.x, y: channelMinY },
+              { x: track.x, y: channelMaxY },
             ],
             strokeColor: this.colorByNetId.get(track.netId),
             strokeWidth: 0.06,
