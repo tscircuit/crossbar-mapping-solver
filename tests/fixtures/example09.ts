@@ -18,6 +18,11 @@ const busNetIds = [
   "N13",
   "N14",
 ]
+const fanoutXFractions = [
+  ...Array.from({ length: 9 }, (_, index) => 0.03 + index * 0.018),
+  ...Array.from({ length: 10 }, (_, index) => 0.38 + index * 0.021),
+  ...Array.from({ length: 9 }, (_, index) => 0.74 + index * 0.025),
+]
 
 export const example09 = createExampleProblem({
   name: "example09 - twenty-eight routes across fifty-six columns",
@@ -53,7 +58,8 @@ export const example09 = createExampleProblem({
   ],
   busNetIds,
   columnCount: 56,
-  sourceSpanRatio: 0.78,
+  fanoutXFractions,
+  fanoutSpacing: "clustered",
   varyViaDiameters: true,
   unsortedColumns: true,
 })

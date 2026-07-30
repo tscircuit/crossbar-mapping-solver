@@ -5,6 +5,7 @@ export interface ExampleExpectations {
   columnCount: number
   busCount: number
   routedNetCount: number
+  fanoutSpacing: "single" | "pair" | "nonuniform" | "clustered"
   routeNetCounts?: Record<string, number>
 }
 
@@ -20,6 +21,8 @@ export interface CreateExampleProblemOptions {
   routeNetIds: Array<string>
   busNetIds: Array<string>
   columnCount: number
+  fanoutXFractions?: Array<number>
+  fanoutSpacing: ExampleExpectations["fanoutSpacing"]
   sourceSpanRatio?: number
   columnPitch?: number
   rowPitch?: number
@@ -39,6 +42,8 @@ export const createExampleProblem = ({
   routeNetIds,
   busNetIds,
   columnCount,
+  fanoutXFractions,
+  fanoutSpacing,
   sourceSpanRatio = 0.4,
   columnPitch = 2,
   rowPitch = 2,
@@ -58,6 +63,24 @@ export const createExampleProblem = ({
   if (routeNetIds.length === 0) {
     throw new Error("routeNetIds must contain at least one routed net")
   }
+  if (fanoutXFractions && fanoutXFractions.length !== routeNetIds.length) {
+    throw new Error(
+      "fanoutXFractions must contain one position for every routed net",
+    )
+  }
+  if (
+    fanoutXFractions?.some(
+      (fraction) => !Number.isFinite(fraction) || fraction < 0 || fraction > 1,
+    )
+  ) {
+    throw new Error("fanoutXFractions must be finite values from zero to one")
+  }
+  if (
+    fanoutXFractions &&
+    new Set(fanoutXFractions).size !== fanoutXFractions.length
+  ) {
+    throw new Error("fanoutXFractions must contain unique positions")
+  }
 
   const busNetIdSet = new Set(busNetIds)
 
@@ -76,8 +99,9 @@ export const createExampleProblem = ({
   const sourceMinX = (maximumColumnX - sourceSpan) / 2
   const sourceMaxX = sourceMinX + sourceSpan
   const fanoutPoints = routeNetIds.map((netId, routeIndex) => ({
-    x:
-      routeNetIds.length === 1
+    x: fanoutXFractions
+      ? maximumColumnX * fanoutXFractions[routeIndex]!
+      : routeNetIds.length === 1
         ? maximumColumnX / 2
         : sourceMinX +
           (sourceMaxX - sourceMinX) * (routeIndex / (routeNetIds.length - 1)),
@@ -115,6 +139,7 @@ export const createExampleProblem = ({
       columnCount,
       busCount: busNetIds.length,
       routedNetCount: new Set(routeNetIds).size,
+      fanoutSpacing,
       routeNetCounts: expectedRouteNetCounts,
     },
     animationSpeed,

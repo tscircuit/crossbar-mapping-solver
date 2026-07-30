@@ -8,5 +8,6 @@ export const example01 = createExampleProblem({
   routeNetIds: ["N1"],
   busNetIds: createNumberedNetIds(2),
   columnCount: 2,
-  sourceSpanRatio: 0,
+  fanoutXFractions: [0.5],
+  fanoutSpacing: "single",
 })

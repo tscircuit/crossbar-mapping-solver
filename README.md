@@ -137,22 +137,26 @@ overlap is allowed.
 
 ## Example ladder
 
-| Example | Routes | Columns | Buses | Routed nets |
-| --- | ---: | ---: | ---: | ---: |
-| 01 | 1 | 2 | 2 | 1 |
-| 02 | 2 | 4 | 4 | 2 |
-| 03 | 3 | 6 | 4 | 3 |
-| 04 | 4 | 8 | 6 | 4 |
-| 05 | 6 | 12 | 8 | 5 |
-| 06 | 8 | 16 | 8 | 6 |
-| 07 | 12 | 24 | 10 | 8 |
-| 08 | 18 | 36 | 12 | 12 |
-| 09 | 28 | 56 | 16 | 16 |
-| 10 | 40 | 80 | 20 | 16 |
+| Example | Routes | Columns | Buses | Routed nets | Fanout spacing |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 01 | 1 | 2 | 2 | 1 | Single source |
+| 02 | 2 | 4 | 4 | 2 | Close pair |
+| 03 | 3 | 6 | 4 | 3 | Uneven |
+| 04 | 4 | 8 | 6 | 4 | Tight cluster + outlier |
+| 05 | 6 | 12 | 8 | 5 | Two asymmetric clusters |
+| 06 | 8 | 16 | 8 | 6 | Unsorted clusters |
+| 07 | 12 | 24 | 10 | 8 | Three clusters |
+| 08 | 18 | 36 | 12 | 12 | Three irregular clusters |
+| 09 | 28 | 56 | 16 | 16 | Three dense clusters |
+| 10 | 40 | 80 | 20 | 16 | Four dense clusters |
 
 Example 10 routes `NET` thirteen times and `VCC` thirteen times, plus fourteen
 signal nets. Its crossbar exposes four additional buses that are not requested
 by the fanout.
+
+Examples 3–10 assert that adjacent fanout spacing is nonuniform. Clustered
+examples additionally assert that the largest empty interval is at least three
+times the smallest adjacent spacing.
 
 ## Simple output
 
