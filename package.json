@@ -52,6 +52,7 @@
     "react-cosmos-plugin-vite": "^7.3.0",
     "react-dom": "^19.2.8",
     "sharp": "0.32.6",
+    "stack-svgs": "^0.0.1",
     "vite": "^8.1.5"
   }
 }

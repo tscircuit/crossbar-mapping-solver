@@ -18,6 +18,35 @@ const NET_COLORS = [
   "#4d7c0f",
 ]
 
+const getVisualizationOffset = ({
+  path,
+  pathIndex,
+  paths,
+}: {
+  path: RoutedFanoutPath
+  pathIndex: number
+  paths: Array<RoutedFanoutPath>
+}): { x: number; y: number } => {
+  const sameNetPaths = paths.filter(
+    (candidate) => candidate.netId === path.netId,
+  )
+  const sameNetPathIndex = sameNetPaths.findIndex(
+    (candidate) =>
+      candidate.columnIndex === path.columnIndex &&
+      candidate.viaIndex === path.viaIndex,
+  )
+  const normalizedOffset =
+    sameNetPaths.length <= 1
+      ? 0
+      : sameNetPathIndex / (sameNetPaths.length - 1) - 0.5
+  const tieBreaker = ((pathIndex % 3) - 1) * 0.006
+
+  return {
+    x: normalizedOffset * 0.16 + tieBreaker,
+    y: normalizedOffset * 0.12 - tieBreaker,
+  }
+}
+
 export class CrossbarMappingSolver extends BaseSolver {
   readonly inputProblem: InputProblem
   private readonly plannedOutput: CrossbarMappingOutput
@@ -93,9 +122,29 @@ export class CrossbarMappingSolver extends BaseSolver {
     const verticalMargin = Math.max(maxY - minY, 1) * 0.08
     const firstGap = this.plannedOutput.columnGaps[0]!
     const lastPad = this.plannedOutput.busPads[0]!
+    const visualizedPaths = this.routedPaths.map((path) => {
+      const pathIndex = this.plannedOutput.paths.findIndex(
+        (candidate) =>
+          candidate.columnIndex === path.columnIndex &&
+          candidate.viaIndex === path.viaIndex,
+      )
+      const offset = getVisualizationOffset({
+        path,
+        pathIndex,
+        paths: this.plannedOutput.paths,
+      })
+
+      return {
+        path,
+        points: path.points.map((point) => ({
+          x: point.x + offset.x,
+          y: point.y + offset.y,
+        })),
+      }
+    })
 
     return {
-      title: `Crossbar mapping (${this.routedPaths.length}/${this.plannedOutput.paths.length} paths)`,
+      title: `Top-down crossbar mapping (${this.routedPaths.length}/${this.plannedOutput.paths.length} paths)`,
       coordinateSystem: "cartesian",
       rects: this.plannedOutput.columnGaps.map((gap) => ({
         center: {
@@ -112,6 +161,21 @@ export class CrossbarMappingSolver extends BaseSolver {
         label: `${gap.netParity} gap ${gap.columnGapIndex}`,
       })),
       lines: [
+        ...allVias.map(({ column, via }) => ({
+          points: [
+            {
+              x: column.x,
+              y: via.y + Math.max(via.diameter, 0.6),
+            },
+            {
+              x: column.x,
+              y: via.y + via.diameter / 2,
+            },
+          ],
+          strokeColor: this.colorByNetId.get(via.netId),
+          strokeWidth: 0.08,
+          label: `${via.netId} incoming fanout traveling downward`,
+        })),
         ...this.plannedOutput.columnGaps.flatMap((gap) =>
           gap.tracks.map((track) => ({
             points: [
@@ -134,11 +198,11 @@ export class CrossbarMappingSolver extends BaseSolver {
           strokeDash: "0.2 0.15",
           label: `${pad.netId} bus row`,
         })),
-        ...this.routedPaths.map((path) => ({
-          points: path.points,
+        ...visualizedPaths.map(({ path, points }) => ({
+          points,
           strokeColor: this.colorByNetId.get(path.netId),
           strokeWidth: 0.14,
-          label: `${path.netId}: ${path.turnDirection} through gap ${path.columnGapIndex}`,
+          label: `${path.netId}: ${path.turnDirection} through gap ${path.columnGapIndex} (visual offset only)`,
         })),
       ],
       circles: [

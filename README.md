@@ -24,7 +24,9 @@ interface InputProblem {
 
 Columns are sorted by `x`. Nets are assigned stable indices in first-seen
 top-to-bottom order. Each column is bordered by an even and an odd channel, so
-the net index determines whether a via turns left or right.
+the net index determines whether a via turns left or right. Fanout arrives
+vertically from the top, descends through its selected channel, and joins the
+generated horizontal bus row.
 
 ## Usage
 
@@ -70,8 +72,10 @@ bun run start
 ```
 
 `bun run start` opens the React Cosmos page containing the generic solver
-debugger.
+debugger. To make coincident routes legible, the debugger applies tiny
+deterministic X/Y offsets to rendered paths. These offsets never change solver
+output geometry.
 
 ## Simple output
 
-![Simple crossbar mapping](./tests/__snapshots__/simple-output.snap.svg)
+![Simple crossbar mapping](./tests/__snapshots__/example02.snap.svg)
