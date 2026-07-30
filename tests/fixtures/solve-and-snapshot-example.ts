@@ -211,11 +211,32 @@ export const solveAndSnapshotExample = async ({
   const routedNetIds = new Set(
     inputProblem.fanoutPoints.map(({ netId }) => netId),
   )
+  const sortedFanoutXCoordinates = inputProblem.fanoutPoints
+    .map(({ x }) => x)
+    .sort((a, b) => a - b)
+  const adjacentFanoutSpacings = sortedFanoutXCoordinates
+    .slice(1)
+    .map((x, index) => x - sortedFanoutXCoordinates[index]!)
+  const distinctFanoutSpacings = new Set(
+    adjacentFanoutSpacings.map((spacing) => spacing.toPrecision(12)),
+  )
 
   expect(inputProblem.fanoutPoints).toHaveLength(expected.routeCount)
   expect(inputProblem.columns).toHaveLength(expected.columnCount)
   expect(busNetIds.size).toBe(expected.busCount)
   expect(routedNetIds.size).toBe(expected.routedNetCount)
+  if (expected.fanoutSpacing === "single") {
+    expect(adjacentFanoutSpacings).toHaveLength(0)
+  } else if (expected.fanoutSpacing === "pair") {
+    expect(adjacentFanoutSpacings).toHaveLength(1)
+  } else {
+    expect(distinctFanoutSpacings.size).toBeGreaterThan(1)
+  }
+  if (expected.fanoutSpacing === "clustered") {
+    expect(Math.max(...adjacentFanoutSpacings)).toBeGreaterThanOrEqual(
+      Math.min(...adjacentFanoutSpacings) * 3,
+    )
+  }
   for (const [netId, expectedCount] of Object.entries(
     expected.routeNetCounts ?? {},
   )) {

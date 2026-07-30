@@ -39,6 +39,10 @@ export const example08 = createExampleProblem({
   ],
   busNetIds,
   columnCount: 36,
-  sourceSpanRatio: 0.68,
+  fanoutXFractions: [
+    0.04, 0.06, 0.09, 0.14, 0.18, 0.37, 0.39, 0.42, 0.48, 0.53, 0.57, 0.73,
+    0.75, 0.78, 0.82, 0.87, 0.92, 0.96,
+  ],
+  fanoutSpacing: "clustered",
   varyViaDiameters: true,
 })
