@@ -1,7 +1,7 @@
 {
   "name": "@tscircuit/crossbar-mapping-solver",
   "version": "0.0.1",
-  "description": "Map columnar fanout vias into alternating crossbar bus channels",
+  "description": "Map horizontal fanout traces into alternating crossbar bus channels",
   "module": "lib/index.ts",
   "type": "module",
   "files": [
@@ -12,6 +12,7 @@
     "type": "git",
     "url": "https://github.com/tscircuit/crossbar-mapping-solver.git"
   },
+  "homepage": "https://crossbar-mapping-solver.vercel.app",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
@@ -52,6 +53,7 @@
     "react-cosmos-plugin-vite": "^7.3.0",
     "react-dom": "^19.2.8",
     "sharp": "0.32.6",
+    "stack-svgs": "^0.0.1",
     "vite": "^8.1.5"
   }
 }

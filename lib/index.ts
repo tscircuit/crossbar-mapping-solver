@@ -3,15 +3,16 @@ export {
   solveCrossbarMapping,
 } from "./crossbar-mapping-solver"
 export type {
-  BusPad,
   ColumnGap,
+  CrossbarColumn,
   CrossbarMappingOutput,
+  CrossbarPad,
   CrossbarTrack,
-  FanoutColumn,
+  CrossbarVia,
   FanoutPoint,
   InputProblem,
-  NetParity,
   Point2D,
   RoutedFanoutPath,
+  SpreadZone,
   TurnDirection,
 } from "./types"
