@@ -3,6 +3,8 @@
 Maps columns of fanout vias into alternating even/odd crossbar channels, then
 routes every via to the generated pad for its net.
 
+[Open the Cosmos solver debugger](https://crossbar-mapping-solver.vercel.app)
+
 ## Input
 
 ```ts

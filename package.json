@@ -12,6 +12,7 @@
     "type": "git",
     "url": "https://github.com/tscircuit/crossbar-mapping-solver.git"
   },
+  "homepage": "https://crossbar-mapping-solver.vercel.app",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
