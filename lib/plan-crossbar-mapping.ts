@@ -28,6 +28,11 @@ interface RouteAssignment {
   targetCandidates: Array<TargetVia>
 }
 
+interface IndexedFanoutPoint {
+  fanoutPoint: FanoutPoint
+  fanoutPointIndex: number
+}
+
 const assertFiniteNumber = (value: number, name: string) => {
   if (!Number.isFinite(value)) {
     throw new Error(`${name} must be a finite number`)
@@ -189,12 +194,6 @@ const getTargetCandidates = ({
   )
 }
 
-const distanceToGap = (pointX: number, gap: ColumnGap): number => {
-  if (pointX < gap.minX) return gap.minX - pointX
-  if (pointX > gap.maxX) return pointX - gap.maxX
-  return 0
-}
-
 const getNetOrder = (inputProblem: InputProblem): Array<string> => {
   const netOrder: Array<string> = []
   const seenNetIds = new Set<string>()
@@ -213,14 +212,125 @@ const getNetOrder = (inputProblem: InputProblem): Array<string> => {
   return netOrder
 }
 
+const assignFanoutPointsToGaps = ({
+  sortedFanoutPoints,
+  columnGaps,
+  columns,
+}: {
+  sortedFanoutPoints: Array<IndexedFanoutPoint>
+  columnGaps: Array<ColumnGap>
+  columns: Array<IndexedColumn>
+}): Map<number, RouteAssignment> => {
+  if (sortedFanoutPoints.length > columnGaps.length) {
+    throw new Error(
+      `Cannot route ${sortedFanoutPoints.length} fanout points through ${columnGaps.length} unique column gaps without trace crossings`,
+    )
+  }
+
+  const candidates = sortedFanoutPoints.map(({ fanoutPoint }) =>
+    columnGaps.map((gap) => {
+      const targetCandidates = getTargetCandidates({
+        columns,
+        gap,
+        netId: fanoutPoint.netId,
+      })
+
+      return targetCandidates.length === 0
+        ? undefined
+        : {
+            gap,
+            targetCandidates,
+            cost: Math.abs(fanoutPoint.x - (gap.minX + gap.maxX) / 2),
+          }
+    }),
+  )
+  const routeCount = sortedFanoutPoints.length
+  const gapCount = columnGaps.length
+  const costByRouteAndGap = Array.from({ length: routeCount }, () =>
+    Array.from({ length: gapCount }, () => Number.POSITIVE_INFINITY),
+  )
+  const previousGapByRouteAndGap = Array.from({ length: routeCount }, () =>
+    Array.from({ length: gapCount }, () => -1),
+  )
+
+  for (let routeIndex = 0; routeIndex < routeCount; routeIndex++) {
+    for (let gapIndex = 0; gapIndex < gapCount; gapIndex++) {
+      const candidate = candidates[routeIndex]![gapIndex]
+
+      if (!candidate) continue
+
+      if (routeIndex === 0) {
+        costByRouteAndGap[routeIndex]![gapIndex] = candidate.cost
+        continue
+      }
+
+      let bestPreviousGapIndex = -1
+      let bestPreviousCost = Number.POSITIVE_INFINITY
+
+      for (
+        let previousGapIndex = routeIndex - 1;
+        previousGapIndex < gapIndex;
+        previousGapIndex++
+      ) {
+        const previousCost =
+          costByRouteAndGap[routeIndex - 1]![previousGapIndex]!
+
+        if (previousCost < bestPreviousCost) {
+          bestPreviousCost = previousCost
+          bestPreviousGapIndex = previousGapIndex
+        }
+      }
+
+      if (bestPreviousGapIndex === -1) continue
+
+      costByRouteAndGap[routeIndex]![gapIndex] =
+        bestPreviousCost + candidate.cost
+      previousGapByRouteAndGap[routeIndex]![gapIndex] = bestPreviousGapIndex
+    }
+  }
+
+  const finalRouteIndex = routeCount - 1
+  let selectedGapIndex = -1
+  let selectedCost = Number.POSITIVE_INFINITY
+
+  for (let gapIndex = finalRouteIndex; gapIndex < gapCount; gapIndex++) {
+    const cost = costByRouteAndGap[finalRouteIndex]![gapIndex]!
+
+    if (cost < selectedCost) {
+      selectedCost = cost
+      selectedGapIndex = gapIndex
+    }
+  }
+
+  if (selectedGapIndex === -1) {
+    throw new Error(
+      "No order-preserving assignment can connect every fanout point to a compatible unique column gap",
+    )
+  }
+
+  const assignmentsByFanoutPointIndex = new Map<number, RouteAssignment>()
+
+  for (let routeIndex = finalRouteIndex; routeIndex >= 0; routeIndex--) {
+    const { fanoutPointIndex } = sortedFanoutPoints[routeIndex]!
+    const candidate = candidates[routeIndex]![selectedGapIndex]!
+
+    assignmentsByFanoutPointIndex.set(fanoutPointIndex, {
+      fanoutPointIndex,
+      gap: candidate.gap,
+      targetCandidates: candidate.targetCandidates,
+    })
+    selectedGapIndex = previousGapByRouteAndGap[routeIndex]![selectedGapIndex]!
+  }
+
+  return assignmentsByFanoutPointIndex
+}
+
 export const planCrossbarMapping = (
   inputProblem: InputProblem,
 ): CrossbarMappingOutput => {
   const fanoutLineY = validateFanoutPoints(inputProblem.fanoutPoints)
   const columns = validateAndSortColumns(inputProblem.columns, fanoutLineY)
   const columnGaps = createColumnGaps(columns)
-  const assignmentCountByGap = columnGaps.map(() => 0)
-  const assignmentsByFanoutPointIndex = new Map<number, RouteAssignment>()
   const sortedFanoutPoints = inputProblem.fanoutPoints
     .map((fanoutPoint, fanoutPointIndex) => ({
       fanoutPoint,
@@ -231,52 +341,11 @@ export const planCrossbarMapping = (
         a.fanoutPoint.x - b.fanoutPoint.x ||
         a.fanoutPointIndex - b.fanoutPointIndex,
     )
-
-  for (const { fanoutPoint, fanoutPointIndex } of sortedFanoutPoints) {
-    const compatibleGaps = columnGaps
-      .map((gap) => ({
-        gap,
-        targetCandidates: getTargetCandidates({
-          columns,
-          gap,
-          netId: fanoutPoint.netId,
-        }),
-      }))
-      .filter(({ targetCandidates }) => targetCandidates.length > 0)
-      .sort((a, b) => {
-        const distanceDifference =
-          distanceToGap(fanoutPoint.x, a.gap) -
-          distanceToGap(fanoutPoint.x, b.gap)
-        if (distanceDifference !== 0) return distanceDifference
-
-        const loadDifference =
-          assignmentCountByGap[a.gap.columnGapIndex]! -
-          assignmentCountByGap[b.gap.columnGapIndex]!
-        if (loadDifference !== 0) return loadDifference
-
-        const aCenter = (a.gap.minX + a.gap.maxX) / 2
-        const bCenter = (b.gap.minX + b.gap.maxX) / 2
-        return (
-          Math.abs(fanoutPoint.x - aCenter) -
-            Math.abs(fanoutPoint.x - bCenter) ||
-          a.gap.columnGapIndex - b.gap.columnGapIndex
-        )
-      })
-
-    const assignment = compatibleGaps[0]
-
-    if (!assignment) {
-      throw new Error(
-        `No column gap has an adjacent ${fanoutPoint.netId} via for fanoutPoints[${fanoutPointIndex}]`,
-      )
-    }
-
-    assignmentCountByGap[assignment.gap.columnGapIndex]! += 1
-    assignmentsByFanoutPointIndex.set(fanoutPointIndex, {
-      fanoutPointIndex,
-      ...assignment,
-    })
-  }
+  const assignmentsByFanoutPointIndex = assignFanoutPointsToGaps({
+    sortedFanoutPoints,
+    columnGaps,
+    columns,
+  })
 
   for (const gap of columnGaps) {
     const gapAssignments = [...assignmentsByFanoutPointIndex.values()]
@@ -319,14 +388,7 @@ export const planCrossbarMapping = (
     minY: topViaEdgeY,
     maxY: fanoutLineY,
   }
-  const spreadYByFanoutPointIndex = new Map(
-    sortedFanoutPoints.map(({ fanoutPointIndex }, spreadIndex) => [
-      fanoutPointIndex,
-      fanoutLineY -
-        ((spreadIndex + 1) / (sortedFanoutPoints.length + 1)) *
-          (fanoutLineY - topViaEdgeY),
-    ]),
-  )
+  const spreadY = fanoutLineY - (fanoutLineY - topViaEdgeY) * 0.12
 
   const paths: Array<RoutedFanoutPath> = inputProblem.fanoutPoints.map(
     (fanoutPoint, fanoutPointIndex) => {
@@ -340,7 +402,6 @@ export const planCrossbarMapping = (
             Math.abs(b.column.column.x - track.x) ||
           a.column.column.x - b.column.column.x,
       )[0]!
-      const spreadY = spreadYByFanoutPointIndex.get(fanoutPointIndex)!
 
       return {
         fanoutPointIndex,
@@ -353,7 +414,7 @@ export const planCrossbarMapping = (
         points: [
           { x: fanoutPoint.x, y: fanoutPoint.y },
           { x: fanoutPoint.x, y: spreadY },
-          { x: track.x, y: spreadY },
+          { x: track.x, y: spreadZone.minY },
           { x: track.x, y: target.via.y },
           { x: target.column.column.x, y: target.via.y },
         ],

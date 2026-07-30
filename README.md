@@ -33,9 +33,11 @@ interface InputProblem {
 
 Every fanout point must share the same `y`, forming one horizontal line above
 all crossbar vias. The empty interval between that line and the highest via is
-the spread zone. Each trace descends into a separate spread lane, moves to a
-compatible internal column gap, descends between the columns, then turns left
-or right into an adjacent via with the same `netId`.
+the spread zone. Fanout points are assigned to compatible, unique column gaps
+in the same left-to-right order as their source points. Each trace initially
+descends, spreads diagonally to its gap, descends between the columns, then
+turns left or right into an adjacent via with the same `netId`. This ordered
+assignment prevents different-net traces from crossing or overlapping.
 
 For an alternating matrix, neighboring columns expose different nets to the
 same gap:
@@ -128,6 +130,10 @@ bun run start
 each containing the generic solver debugger. To make coincident routes
 legible, the debugger applies tiny deterministic X/Y offsets to rendered
 paths. These offsets never change solver output geometry.
+
+Every SVG example also checks all pairs of output segments and fails if traces
+with different `netId` values intersect, touch, or overlap. Same-net trace
+overlap is allowed.
 
 ## Example ladder
 

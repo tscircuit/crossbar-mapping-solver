@@ -4,6 +4,7 @@ import { CrossbarMappingSolver } from "lib/crossbar-mapping-solver"
 import type { InputProblem } from "lib/types"
 import { stackSvgsHorizontally } from "stack-svgs"
 import type { ExampleExpectations } from "./create-example-problem"
+import { getTraceIntersections } from "./get-trace-intersections"
 
 const COLORS = [
   "#2563eb",
@@ -238,6 +239,7 @@ export const solveAndSnapshotExample = async ({
     minY: topViaEdgeY,
     maxY: fanoutLineY,
   })
+  expect(getTraceIntersections(output.paths)).toEqual([])
 
   for (const path of output.paths) {
     const fanoutPoint = inputProblem.fanoutPoints[path.fanoutPointIndex]!
@@ -257,7 +259,11 @@ export const solveAndSnapshotExample = async ({
     expect(path.spreadY).toBeGreaterThan(output.spreadZone.minY)
     expect(path.spreadY).toBeLessThan(output.spreadZone.maxY)
     expect(spreadEntry).toEqual({ x: fanoutPoint.x, y: path.spreadY })
-    expect(spreadExit).toEqual({ x: track.x, y: path.spreadY })
+    expect(spreadExit).toEqual({
+      x: track.x,
+      y: output.spreadZone.minY,
+    })
+    expect(spreadEntry!.y).toBeGreaterThan(spreadExit!.y)
     expect(track.x).toBeGreaterThan(gap.minX)
     expect(track.x).toBeLessThan(gap.maxX)
     expect(columnEntry).toEqual({ x: track.x, y: targetVia.y })
