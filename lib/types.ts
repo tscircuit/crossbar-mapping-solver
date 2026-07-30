@@ -4,40 +4,52 @@ export interface Point2D {
 }
 
 /**
- * A via in a fanout column. Its X coordinate is inherited from the column.
+ * The end of an incoming fanout trace. Every fanout point shares one Y
+ * coordinate above the crossbar.
  */
-export interface FanoutPoint {
+export interface FanoutPoint extends Point2D {
+  netId: string
+}
+
+/**
+ * A crossbar via. Its X coordinate is inherited from its column.
+ */
+export interface CrossbarVia {
   y: number
   diameter: number
   netId: string
 }
 
-export interface FanoutColumn {
+export interface CrossbarColumn {
   x: number
-  vias: Array<FanoutPoint>
+  vias: Array<CrossbarVia>
 }
 
 export interface InputProblem {
-  columns: Array<FanoutColumn>
+  fanoutPoints: Array<FanoutPoint>
+  columns: Array<CrossbarColumn>
 }
 
-export type NetParity = "even" | "odd"
 export type TurnDirection = "left" | "right"
 
 export interface CrossbarTrack {
+  fanoutPointIndex: number
   netId: string
   x: number
 }
 
 export interface ColumnGap {
   columnGapIndex: number
-  netParity: NetParity
+  leftColumnIndex: number
+  rightColumnIndex: number
   minX: number
   maxX: number
   tracks: Array<CrossbarTrack>
 }
 
-export interface BusPad extends Point2D {
+export interface CrossbarPad extends Point2D {
+  columnIndex: number
+  viaIndex: number
   netId: string
   diameter: number
 }
@@ -48,10 +60,11 @@ export interface SpreadZone {
 }
 
 export interface RoutedFanoutPath {
-  columnIndex: number
-  viaIndex: number
+  fanoutPointIndex: number
   netId: string
   columnGapIndex: number
+  targetColumnIndex: number
+  targetViaIndex: number
   turnDirection: TurnDirection
   spreadY: number
   points: Array<Point2D>
@@ -60,7 +73,7 @@ export interface RoutedFanoutPath {
 export interface CrossbarMappingOutput {
   netOrder: Array<string>
   columnGaps: Array<ColumnGap>
-  busPads: Array<BusPad>
+  crossbarPads: Array<CrossbarPad>
   paths: Array<RoutedFanoutPath>
   fanoutLineY: number
   spreadZone: SpreadZone

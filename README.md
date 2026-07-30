@@ -1,7 +1,7 @@
 # @tscircuit/crossbar-mapping-solver
 
-Maps columns of fanout vias into alternating even/odd crossbar channels, then
-routes every via to the generated pad for its net.
+Maps a horizontal line of incoming fanout traces through a spread zone and
+column gaps to matching vias in an alternating crossbar matrix.
 
 [Open the Cosmos solver debugger](https://crossbar-mapping-solver.vercel.app)
 
@@ -9,28 +9,44 @@ routes every via to the generated pad for its net.
 
 ```ts
 interface FanoutPoint {
+  x: number
+  y: number
+  netId: string
+}
+
+interface CrossbarVia {
   y: number
   diameter: number
   netId: string
 }
 
-interface FanoutColumn {
+interface CrossbarColumn {
   x: number
-  vias: Array<FanoutPoint>
+  vias: Array<CrossbarVia>
 }
 
 interface InputProblem {
-  columns: Array<FanoutColumn>
+  fanoutPoints: Array<FanoutPoint>
+  columns: Array<CrossbarColumn>
 }
 ```
 
-Columns are sorted by `x`. Nets are assigned stable indices in first-seen
-top-to-bottom order. Each column is bordered by an even and an odd channel, so
-the net index determines whether a via turns left or right. All fanout vias sit
-above the crossbars. A clear spread zone separates the fanout line from the
-horizontal bus rows: each trace descends into its own spread lane, moves
-horizontally to the selected column track, descends through that track, and
-then joins its generated crossbar row.
+Every fanout point must share the same `y`, forming one horizontal line above
+all crossbar vias. The empty interval between that line and the highest via is
+the spread zone. Each trace descends into a separate spread lane, moves to a
+compatible internal column gap, descends between the columns, then turns left
+or right into an adjacent via with the same `netId`.
+
+For an alternating matrix, neighboring columns expose different nets to the
+same gap:
+
+```text
+F1      F2      F3
+<---- spread zone ---->
+C1  C2  C3  C4  C5  C6
+N1  N2  N1  N2  N1  N2
+N3  N4  N3  N4  N3  N4
+```
 
 ## Usage
 
@@ -41,19 +57,52 @@ import {
 } from "@tscircuit/crossbar-mapping-solver"
 
 const input: InputProblem = {
+  fanoutPoints: [
+    { x: 4, y: 10, netId: "N1" },
+    { x: 5, y: 10, netId: "N2" },
+    { x: 6, y: 10, netId: "N3" },
+  ],
   columns: [
     {
       x: 0,
       vias: [
-        { y: 3, diameter: 0.8, netId: "D0" },
-        { y: 1, diameter: 0.8, netId: "D1" },
+        { y: 2, diameter: 0.8, netId: "N1" },
+        { y: 0, diameter: 0.8, netId: "N3" },
+      ],
+    },
+    {
+      x: 2,
+      vias: [
+        { y: 2, diameter: 0.8, netId: "N2" },
+        { y: 0, diameter: 0.8, netId: "N4" },
       ],
     },
     {
       x: 4,
       vias: [
-        { y: 3, diameter: 0.8, netId: "D0" },
-        { y: 1, diameter: 0.8, netId: "D1" },
+        { y: 2, diameter: 0.8, netId: "N1" },
+        { y: 0, diameter: 0.8, netId: "N3" },
+      ],
+    },
+    {
+      x: 6,
+      vias: [
+        { y: 2, diameter: 0.8, netId: "N2" },
+        { y: 0, diameter: 0.8, netId: "N4" },
+      ],
+    },
+    {
+      x: 8,
+      vias: [
+        { y: 2, diameter: 0.8, netId: "N1" },
+        { y: 0, diameter: 0.8, netId: "N3" },
+      ],
+    },
+    {
+      x: 10,
+      vias: [
+        { y: 2, diameter: 0.8, netId: "N2" },
+        { y: 0, diameter: 0.8, netId: "N4" },
       ],
     },
   ],

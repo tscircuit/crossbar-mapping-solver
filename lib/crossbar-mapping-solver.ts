@@ -31,9 +31,7 @@ const getVisualizationOffset = ({
     (candidate) => candidate.netId === path.netId,
   )
   const sameNetPathIndex = sameNetPaths.findIndex(
-    (candidate) =>
-      candidate.columnIndex === path.columnIndex &&
-      candidate.viaIndex === path.viaIndex,
+    (candidate) => candidate.fanoutPointIndex === path.fanoutPointIndex,
   )
   const normalizedOffset =
     sameNetPaths.length <= 1
@@ -105,35 +103,27 @@ export class CrossbarMappingSolver extends BaseSolver {
   }
 
   override visualize(): GraphicsObject {
-    const allVias = this.inputProblem.columns.flatMap((column, columnIndex) =>
-      column.vias.map((via, viaIndex) => ({
-        column,
-        columnIndex,
-        via,
-        viaIndex,
-      })),
-    )
+    const columnsByX = this.inputProblem.columns
+      .map((column, columnIndex) => ({ column, columnIndex }))
+      .sort((a, b) => a.column.x - b.column.x)
+    const firstColumn = columnsByX[0]!.column
+    const lastColumn = columnsByX[columnsByX.length - 1]!.column
     const allYCoordinates = [
-      ...allVias.map(({ via }) => via.y),
-      ...this.plannedOutput.busPads.map(({ y }) => y),
       this.plannedOutput.fanoutLineY,
-      this.plannedOutput.spreadZone.minY,
-      this.plannedOutput.spreadZone.maxY,
+      ...this.plannedOutput.crossbarPads.map(({ y }) => y),
     ]
     const minY = Math.min(...allYCoordinates)
     const maxY = Math.max(...allYCoordinates)
     const verticalMargin = Math.max(maxY - minY, 1) * 0.08
-    const firstGap = this.plannedOutput.columnGaps[0]!
-    const lastPad = this.plannedOutput.busPads[0]!
-    const lastGap =
-      this.plannedOutput.columnGaps[this.plannedOutput.columnGaps.length - 1]!
+    const horizontalMargin = Math.max(lastColumn.x - firstColumn.x, 1) * 0.06
     const channelMinY = minY - verticalMargin
-    const channelMaxY = this.plannedOutput.spreadZone.maxY
+    const channelMaxY = this.plannedOutput.spreadZone.minY
+    const uniqueRowYCoordinates = Array.from(
+      new Set(this.plannedOutput.crossbarPads.map(({ y }) => y)),
+    )
     const visualizedPaths = this.routedPaths.map((path) => {
       const pathIndex = this.plannedOutput.paths.findIndex(
-        (candidate) =>
-          candidate.columnIndex === path.columnIndex &&
-          candidate.viaIndex === path.viaIndex,
+        (candidate) => candidate.fanoutPointIndex === path.fanoutPointIndex,
       )
       const offset = getVisualizationOffset({
         path,
@@ -151,7 +141,7 @@ export class CrossbarMappingSolver extends BaseSolver {
     })
 
     return {
-      title: `Top-down crossbar mapping (${this.routedPaths.length}/${this.plannedOutput.paths.length} paths)`,
+      title: `Horizontal fanout to crossbar vias (${this.routedPaths.length}/${this.plannedOutput.paths.length} paths)`,
       coordinateSystem: "cartesian",
       rects: [
         ...this.plannedOutput.columnGaps.map((gap) => ({
@@ -162,112 +152,131 @@ export class CrossbarMappingSolver extends BaseSolver {
           width: gap.maxX - gap.minX,
           height: channelMaxY - channelMinY,
           fill:
-            gap.netParity === "even"
-              ? "rgba(219, 234, 254, 0.22)"
-              : "rgba(243, 232, 255, 0.22)",
-          stroke: gap.netParity === "even" ? "#93c5fd" : "#d8b4fe",
-          label: `${gap.netParity} gap ${gap.columnGapIndex}`,
+            gap.columnGapIndex % 2 === 0
+              ? "rgba(219, 234, 254, 0.2)"
+              : "rgba(243, 232, 255, 0.2)",
+          stroke: gap.columnGapIndex % 2 === 0 ? "#93c5fd" : "#d8b4fe",
+          label: `column gap ${gap.columnGapIndex}`,
         })),
         {
           center: {
-            x: (firstGap.minX + lastGap.maxX) / 2,
+            x: (firstColumn.x + lastColumn.x) / 2,
             y:
               (this.plannedOutput.spreadZone.minY +
                 this.plannedOutput.spreadZone.maxY) /
               2,
           },
-          width: lastGap.maxX - firstGap.minX,
+          width: lastColumn.x - firstColumn.x + horizontalMargin * 2,
           height:
             this.plannedOutput.spreadZone.maxY -
             this.plannedOutput.spreadZone.minY,
-          fill: "rgba(254, 243, 199, 0.22)",
+          fill: "rgba(254, 243, 199, 0.2)",
           stroke: "#f59e0b",
           label: "spread zone",
         },
       ],
       lines: [
-        ...allVias.map(({ column, via }) => ({
+        ...this.inputProblem.fanoutPoints.map((fanoutPoint) => ({
           points: [
             {
-              x: column.x,
-              y: via.y + Math.max(via.diameter, 0.6),
+              x: fanoutPoint.x,
+              y: fanoutPoint.y + Math.max(verticalMargin * 0.8, 0.6),
             },
-            {
-              x: column.x,
-              y: via.y + via.diameter / 2,
-            },
+            { x: fanoutPoint.x, y: fanoutPoint.y },
           ],
-          strokeColor: this.colorByNetId.get(via.netId),
+          strokeColor: this.colorByNetId.get(fanoutPoint.netId),
           strokeWidth: 0.08,
-          label: `${via.netId} incoming fanout traveling downward`,
+          label: `${fanoutPoint.netId} incoming fanout`,
         })),
         {
           points: [
-            { x: firstGap.minX, y: this.plannedOutput.fanoutLineY },
-            { x: lastGap.maxX, y: this.plannedOutput.fanoutLineY },
+            {
+              x: Math.min(
+                firstColumn.x - horizontalMargin,
+                ...this.inputProblem.fanoutPoints.map(({ x }) => x),
+              ),
+              y: this.plannedOutput.fanoutLineY,
+            },
+            {
+              x: Math.max(
+                lastColumn.x + horizontalMargin,
+                ...this.inputProblem.fanoutPoints.map(({ x }) => x),
+              ),
+              y: this.plannedOutput.fanoutLineY,
+            },
           ],
           strokeColor: "#475569",
           strokeWidth: 0.07,
           strokeDash: "0.2 0.14",
-          label: "fanout line: all fanout vias remain above this boundary",
+          label: "horizontal fanout line",
         },
+        ...uniqueRowYCoordinates.map((rowY) => ({
+          points: [
+            { x: firstColumn.x - horizontalMargin, y: rowY },
+            { x: lastColumn.x + horizontalMargin, y: rowY },
+          ],
+          strokeColor: "#94a3b8",
+          strokeWidth: 0.04,
+          strokeDash: "0.15 0.13",
+          label: `crossbar row y=${rowY}`,
+        })),
+        ...columnsByX.map(({ column }, sortedColumnIndex) => ({
+          points: [
+            { x: column.x, y: channelMinY },
+            { x: column.x, y: channelMaxY },
+          ],
+          strokeColor: sortedColumnIndex % 2 === 0 ? "#64748b" : "#94a3b8",
+          strokeWidth: 0.04,
+          strokeDash: "0.12 0.12",
+          label: `crossbar column x=${column.x}`,
+        })),
         ...this.plannedOutput.columnGaps.flatMap((gap) =>
           gap.tracks.map((track) => ({
             points: [
               { x: track.x, y: channelMinY },
-              { x: track.x, y: channelMaxY },
+              { x: track.x, y: this.plannedOutput.spreadZone.maxY },
             ],
             strokeColor: this.colorByNetId.get(track.netId),
-            strokeWidth: 0.06,
+            strokeWidth: 0.05,
             strokeDash: "0.18 0.12",
-            label: `${track.netId} column track`,
+            label: `${track.netId} gap track`,
           })),
         ),
-        ...this.plannedOutput.busPads.map((pad) => ({
-          points: [
-            { x: firstGap.minX, y: pad.y },
-            { x: lastPad.x, y: pad.y },
-          ],
-          strokeColor: this.colorByNetId.get(pad.netId),
-          strokeWidth: 0.05,
-          strokeDash: "0.2 0.15",
-          label: `${pad.netId} bus row`,
-        })),
         ...visualizedPaths.map(({ path, points }) => ({
           points,
           strokeColor: this.colorByNetId.get(path.netId),
           strokeWidth: 0.14,
-          label: `${path.netId}: ${path.turnDirection} through gap ${path.columnGapIndex} (visual offset only)`,
+          label: `${path.netId}: gap ${path.columnGapIndex}, turn ${path.turnDirection} (visual offset only)`,
         })),
       ],
       circles: [
-        ...allVias.map(({ column, via }) => ({
-          center: { x: column.x, y: via.y },
-          radius: via.diameter / 2,
-          fill: "#ffffff",
-          stroke: this.colorByNetId.get(via.netId),
-          label: `${via.netId} via`,
+        ...this.inputProblem.fanoutPoints.map((fanoutPoint) => ({
+          center: fanoutPoint,
+          radius: 0.13,
+          fill: this.colorByNetId.get(fanoutPoint.netId),
+          stroke: "#0f172a",
+          label: `${fanoutPoint.netId} fanout point`,
         })),
-        ...this.plannedOutput.busPads.map((pad) => ({
+        ...this.plannedOutput.crossbarPads.map((pad) => ({
           center: { x: pad.x, y: pad.y },
           radius: pad.diameter / 2,
-          fill: this.colorByNetId.get(pad.netId),
-          stroke: "#0f172a",
-          label: `${pad.netId} bus pad`,
+          fill: "#ffffff",
+          stroke: this.colorByNetId.get(pad.netId),
+          label: `${pad.netId} crossbar via`,
         })),
       ],
       points: [
-        ...allVias.map(({ column, via }) => ({
-          x: column.x,
-          y: via.y,
-          color: this.colorByNetId.get(via.netId),
-          label: via.netId,
+        ...this.inputProblem.fanoutPoints.map((fanoutPoint) => ({
+          x: fanoutPoint.x,
+          y: fanoutPoint.y,
+          color: this.colorByNetId.get(fanoutPoint.netId),
+          label: `${fanoutPoint.netId} fanout`,
         })),
-        ...this.plannedOutput.busPads.map((pad) => ({
+        ...this.plannedOutput.crossbarPads.map((pad) => ({
           x: pad.x,
           y: pad.y,
           color: this.colorByNetId.get(pad.netId),
-          label: `${pad.netId} pad`,
+          label: `${pad.netId} via`,
         })),
       ],
     }
