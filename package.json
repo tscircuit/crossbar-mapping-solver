@@ -1,6 +1,6 @@
 {
   "name": "@tscircuit/crossbar-mapping-solver",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Map horizontal fanout traces into alternating crossbar bus channels",
   "module": "lib/index.ts",
   "type": "module",
